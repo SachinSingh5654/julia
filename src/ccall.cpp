@@ -1168,8 +1168,9 @@ public:
             jl_codectx_t &ctx,
             const native_sym_arg_t &symarg,
             jl_cgval_t *argv,
-            SmallVectorImpl<Value*> &gc_uses,
-            bool static_rt) const;
+            SmallVector<Value*> &gc_uses,
+            bool static_rt,
+            bool gc_safe) const;
 
 private:
 std::string generate_func_sig(const char *fname)
@@ -1430,6 +1431,12 @@ static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
     else if (jl_is_tuple(jlcc)) {
         cc_sym = (jl_sym_t*)jl_get_nth_field_noalloc(jlcc, 0);
     }
+    // TODO: Can we detect calls to the runtime and not mark them gc_safe,
+    //       but for all other ccall we transition? We could add a new cconv
+    //       for runtime calls.
+    // TODO: Can we introduce a intrinisc token = @julia.gc_safe_begin()
+    //       and "grow" gc safe regions so that we minimize the overhead?
+    bool gc_safe = false;
     assert(jl_is_symbol(cc_sym));
     native_sym_arg_t symarg = {};
     JL_GC_PUSH3(&rt, &at, &symarg.gcroot);
@@ -1965,7 +1972,8 @@ static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
             symarg,
             argv.data(),
             gc_uses,
-            static_rt);
+            static_rt,
+            gc_safe);
     JL_GC_POP();
     return retval;
 }
@@ -1974,8 +1982,9 @@ jl_cgval_t function_sig_t::emit_a_ccall(
         jl_codectx_t &ctx,
         const native_sym_arg_t &symarg,
         jl_cgval_t *argv,
-        SmallVectorImpl<Value*> &gc_uses,
-        bool static_rt) const
+        SmallVector<Value*> &gc_uses,
+        bool static_rt,
+        bool gc_safe) const
 {
     ++EmittedCCalls;
     if (!err_msg.empty()) {
@@ -2156,6 +2165,11 @@ jl_cgval_t function_sig_t::emit_a_ccall(
         }
     }
 
+    Value *last_gc_state = NULL;
+    Value *ptls = get_current_ptls(ctx); // Do we need to reload this after the ccall?
+
+    if (gc_safe)
+        last_gc_state = emit_gc_safe_enter(ctx.builder, ctx.types().T_size, ptls, false);
     OperandBundleDef OpBundle("jl_roots", gc_uses);
     // the actual call
     CallInst *ret = ctx.builder.CreateCall(functype, llvmf,
@@ -2170,6 +2184,9 @@ jl_cgval_t function_sig_t::emit_a_ccall(
     if (0) { // Enable this to turn on SSPREQ (-fstack-protector) on the function containing this ccall
         ctx.f->addFnAttr(Attribute::StackProtectReq);
     }
+
+    if (gc_safe)
+        emit_gc_safe_leave(ctx.builder, ctx.types().T_size, ptls, last_gc_state, false);
 
     if (rt == jl_bottom_type) {
         CreateTrap(ctx.builder);
