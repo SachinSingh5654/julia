@@ -1025,7 +1025,7 @@ end
 # TODO: we can apply a similar strategy like builtin calls to specialize some foreigncalls
 function escape_foreigncall!(astate::AnalysisState, pc::Int, args::Vector{Any})
     nargs = length(args)
-    if nargs < 6
+    if nargs < 8
         # invalid foreigncall, just escape everything
         add_conservative_changes!(astate, pc, args)
         return
@@ -1049,7 +1049,7 @@ function escape_foreigncall!(astate::AnalysisState, pc::Int, args::Vector{Any})
         add_escape_change!(astate, args[5+i], arg_info)
         add_liveness_change!(astate, args[5+i], pc)
     end
-    for i = (5+nargs):length(args)
+    for i = (7+nargs):length(args)
         arg = args[i]
         add_escape_change!(astate, arg, ⊥)
         add_liveness_change!(astate, arg, pc)

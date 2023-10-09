@@ -3134,7 +3134,7 @@ add_tfunc(Core.get_binding_type, 2, 2, @nospecs((𝕃::AbstractLattice, args...)
 # N.B. the `abstract_eval` callback below allows us to use these queries
 # both during abstract interpret and optimization
 
-const FOREIGNCALL_ARG_START = 6
+const FOREIGNCALL_ARG_START = 7
 
 function foreigncall_effects(@nospecialize(abstract_eval), e::Expr)
     # `:foreigncall` can potentially perform all sorts of operations, including calling
