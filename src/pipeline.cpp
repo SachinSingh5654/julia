@@ -410,9 +410,9 @@ static void buildEarlyOptimizerPipeline(ModulePassManager &MPM, PassBuilder *PB,
         }
         invokePeepholeEPCallbacks(FPM, PB, O);
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM), /*UseMemorySSA = */true));
-    }
-    MPM.addPass(GlobalOptPass());
-    MPM.addPass(GlobalDCEPass());
+      }
+      MPM.addPass(GlobalOptPass());
+      MPM.addPass(GlobalDCEPass());
     }
     MPM.addPass(AfterEarlyOptimizationMarkerPass());
 }
