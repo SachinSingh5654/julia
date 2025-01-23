@@ -2187,14 +2187,12 @@ bool LateLowerGCFrame::CleanupIR(Function &F, State *S, bool *CFGModified) {
                     IRBuilder<> builder(CI);
                     Value *pgcstack = getPGCstack(F);
                     assert(pgcstack);
-                    Value *ptls = get_current_ptls_from_task(builder, T_size, get_current_task_from_pgcstack(builder, T_size, pgcstack), tbaa_gcframe);
+                    Value *ptls = get_current_ptls_from_task(builder, get_current_task_from_pgcstack(builder, pgcstack), tbaa_gcframe);
                     Value *last_gc_state = emit_gc_safe_enter(builder, T_size, ptls, false);
                     builder.SetInsertPoint(CI->getNextNode());
-                    // Can't use `emit_gc_safe_exit` since that wan'ts to emit some branches...
-                    // Value *old_state = builder.getInt8(JL_GC_STATE_SAFE);
-                    llvm::Value *ptls_i8 = emit_bitcast_with_builder(builder, ptls, builder.getInt8PtrTy());
-                    Constant *offset = ConstantInt::getSigned(builder.getInt32Ty(), offsetof(jl_tls_states_t, gc_state));
-                    Value *gc_state = builder.CreateInBoundsGEP(builder.getInt8Ty(), ptls_i8, ArrayRef<Value*>(offset), "gc_state");
+                    // Can't use `emit_gc_safe_leave` since that wan'ts to emit some new BB, and we are currently iterating over those.
+                    unsigned offset = offsetof(jl_tls_states_t, gc_state);
+                    Value *gc_state = builder.CreateConstInBoundsGEP1_32(last_gc_state->getType(), ptls, offset, "gc_state");
                     builder.CreateAlignedStore(last_gc_state, gc_state, Align(sizeof(void*)))->setOrdering(AtomicOrdering::Release);
                     MDNode *tbaa = get_tbaa_const(builder.getContext());
                     // unconditional safepoint due to branches
