@@ -1414,7 +1414,7 @@ static const std::string verify_ccall_sig(jl_value_t *&rt, jl_value_t *at,
     return "";
 }
 
-const int fc_args_start = 7;
+const int fc_args_start = 6;
 
 // Expr(:foreigncall, pointer, rettype, (argtypes...), nreq, gc_safe, [cconv | (cconv, effects)], args..., roots...)
 static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
@@ -1425,19 +1425,20 @@ static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
     jl_value_t *at = args[3];
     size_t nccallargs = jl_svec_len(at);
     size_t nreqargs = jl_unbox_long(args[4]); // if vararg
-    assert(jl_is_quotenode(args[6]));
-    jl_value_t *jlcc = jl_quotenode_value(args[6]);
+    assert(jl_is_quotenode(args[5]));
+    jl_value_t *jlcc = jl_quotenode_value(args[5]);
     jl_sym_t *cc_sym = NULL;
+    // TODO: Can we introduce a intrinisc token = @julia.gc_safe_begin()
+    //       and "grow" gc safe regions so that we minimize the overhead?
+    bool gc_safe = false;
+    assert(jl_is_symbol(cc_sym));
     if (jl_is_symbol(jlcc)) {
         cc_sym = (jl_sym_t*)jlcc;
     }
     else if (jl_is_tuple(jlcc)) {
         cc_sym = (jl_sym_t*)jl_get_nth_field_noalloc(jlcc, 0);
+        gc_safe = jl_unbox_bool(jl_get_nth_field_noalloc(jlcc, 2));
     }
-    // TODO: Can we introduce a intrinisc token = @julia.gc_safe_begin()
-    //       and "grow" gc safe regions so that we minimize the overhead?
-    bool gc_safe = jl_unbox_bool(args[5]);
-    assert(jl_is_symbol(cc_sym));
     native_sym_arg_t symarg = {};
     JL_GC_PUSH3(&rt, &at, &symarg.gcroot);
 
@@ -2163,11 +2164,6 @@ jl_cgval_t function_sig_t::emit_a_ccall(
         }
     }
 
-    // Value *last_gc_state = NULL;
-    // Value *ptls = get_current_ptls(ctx); // Do we need to reload this after the ccall?
-
-    // if (gc_safe)
-    //    last_gc_state = emit_gc_safe_enter(ctx.builder, ctx.types().T_size, ptls, false);
     OperandBundleDef OpBundle("jl_roots", gc_uses);
     // the actual call
     CallInst *ret = ctx.builder.CreateCall(functype, llvmf,
@@ -2182,12 +2178,6 @@ jl_cgval_t function_sig_t::emit_a_ccall(
     if (0) { // Enable this to turn on SSPREQ (-fstack-protector) on the function containing this ccall
         ctx.f->addFnAttr(Attribute::StackProtectReq);
     }
-
-    // if (gc_safe)
-        // ret->addAttribute("julia.gc_safe");
-
-    //if (gc_safe)
-    //    emit_gc_safe_leave(ctx.builder, ctx.types().T_size, ptls, last_gc_state, false);
 
     if (rt == jl_bottom_type) {
         CreateTrap(ctx.builder);

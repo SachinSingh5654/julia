@@ -498,19 +498,15 @@ These symbols appear in the `head` field of [`Expr`](@ref)s in lowered form.
 
         The number of required arguments for a varargs function definition.
 
-      * `args[5]::Bool` : gc_safe
+      * `args[5]::QuoteNode{<:Union{Symbol,Tuple{Symbol,UInt16}, Tuple{Symbol,UInt16,Bool}}`: calling convention
 
-        If this foreigncall is safe to execute concurrently to GC.
+        The calling convention for the call, optionally with effects, and `gc_safe` (safe to execute concurrently to GC.).
 
-      * `args[6]::QuoteNode{<:Union{Symbol,Tuple{Symbol,UInt16}}`: calling convention
-
-        The calling convention for the call, optionally with effects.
-
-      * `args[7:6+length(args[3])]` : arguments
+      * `args[6:5+length(args[3])]` : arguments
 
         The values for all the arguments (with types of each given in args[3]).
 
-      * `args[7+length(args[3])+1:end]` : gc-roots
+      * `args[6+length(args[3])+1:end]` : gc-roots
 
         The additional objects that may need to be gc-rooted for the duration of the call.
         See [Working with LLVM](@ref Working-with-LLVM) for where these are derived from and how they get handled.
