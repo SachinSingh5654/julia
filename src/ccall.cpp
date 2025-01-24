@@ -1169,7 +1169,7 @@ public:
             jl_codectx_t &ctx,
             const native_sym_arg_t &symarg,
             jl_cgval_t *argv,
-            SmallVector<Value*> &gc_uses,
+            SmallVectorImpl<Value*> &gc_uses,
             bool static_rt) const;
 
 private:
@@ -1439,6 +1439,7 @@ static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
         cc_sym = (jl_sym_t*)jl_get_nth_field_noalloc(jlcc, 0);
         gc_safe = jl_unbox_bool(jl_get_nth_field_noalloc(jlcc, 2));
     }
+    assert(jl_is_symbol(cc_sym));
     native_sym_arg_t symarg = {};
     JL_GC_PUSH3(&rt, &at, &symarg.gcroot);
 
@@ -1982,7 +1983,7 @@ jl_cgval_t function_sig_t::emit_a_ccall(
         jl_codectx_t &ctx,
         const native_sym_arg_t &symarg,
         jl_cgval_t *argv,
-        SmallVector<Value*> &gc_uses,
+        SmallVectorImpl<Value*> &gc_uses,
         bool static_rt) const
 {
     ++EmittedCCalls;

@@ -129,7 +129,7 @@ static jl_value_t *resolve_definition_effects(jl_value_t *expr, jl_module_t *mod
         return expr;
     }
     if (e->head == jl_foreigncall_sym) {
-        JL_NARGSV(ccall method definition, 6); // (fptr, rt, at, nreq, gc_safe, (cc, effects))
+        JL_NARGSV(ccall method definition, 5); // (fptr, rt, at, nreq, (cc, effects, gc_safe))
         jl_task_t *ct = jl_current_task;
         jl_value_t *rt = jl_exprarg(e, 1);
         jl_value_t *at = jl_exprarg(e, 2);
