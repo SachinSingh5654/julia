@@ -3,6 +3,7 @@
 // --- the ccall, cglobal, and llvm intrinsics ---
 
 // Mark our stats as being from ccall
+#include "julia.h"
 #undef DEBUG_TYPE
 #define DEBUG_TYPE "julia_irgen_ccall"
 
@@ -1431,13 +1432,12 @@ static jl_cgval_t emit_ccall(jl_codectx_t &ctx, jl_value_t **args, size_t nargs)
     // TODO: Can we introduce a intrinisc token = @julia.gc_safe_begin()
     //       and "grow" gc safe regions so that we minimize the overhead?
     bool gc_safe = false;
-    assert(jl_is_symbol(cc_sym));
     if (jl_is_symbol(jlcc)) {
         cc_sym = (jl_sym_t*)jlcc;
     }
     else if (jl_is_tuple(jlcc)) {
         cc_sym = (jl_sym_t*)jl_get_nth_field_noalloc(jlcc, 0);
-        gc_safe = jl_unbox_bool(jl_get_nth_field_noalloc(jlcc, 2));
+        gc_safe = jl_unbox_bool(jl_get_nth_field_checked(jlcc, 2));
     }
     assert(jl_is_symbol(cc_sym));
     native_sym_arg_t symarg = {};
